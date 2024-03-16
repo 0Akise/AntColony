@@ -2,53 +2,57 @@
 
 #include <SFML/Graphics.hpp>
 
-class Food
+#include <sim/object.hpp>
+
+#include <cmath> // std::min
+
+namespace R_01
 {
-private:
-    sf::Vector2f m_BodySize;
-    float m_HitboxSize;
-    sf::Vector2f m_Position;
+    class Food : public IObject
+    {
+    private:
+        struct M {
+            ObjectType _Type;
 
-    float m_Nutrition;
-    unsigned int m_Lifespan;
+            sf::Vector2f _Size;
+            sf::Vector2f _Pos;
+            sf::Color _Color;
+            float_t _Hitbox;
 
-public:
-    Food(sf::Vector2f bodysize, sf::Vector2f position, float hungerValue, unsigned int lifespan);
-    ~Food();
+            uint32_t _Nutrition;
+            uint32_t _Lifespan;
+        } m;
 
-    void draw(sf::RenderWindow &window);
-    void update();
+        explicit Food(M m) : m(std::move(m)) {}
 
-    sf::Vector2f getBodySize() const { return m_BodySize; }
-    float getCollisionRadius() const { return m_HitboxSize; }
-    sf::Vector2f getPosition() const { return m_Position; }
-    float getHungerValue() const { return m_Nutrition; }
-    unsigned int getLifespan() const { return m_Lifespan; }
-    void setLifeSpan(unsigned int lifespan) { m_Lifespan = lifespan; }
-};
+    public:
+        static Food create(sf::Vector2f size, sf::Vector2f pos, uint32_t nutrition, uint32_t lifespan);
 
-Food::Food(sf::Vector2f bodysize, sf::Vector2f position, float nutrition, unsigned int lifespan)
-    : m_BodySize(bodysize),
-      m_HitboxSize(std::min(bodysize.x, bodysize.y) / 2.0f),
-      m_Position(position),
-      m_Nutrition(nutrition),
-      m_Lifespan(lifespan)
-{
+        ObjectType getType() const override { return m._Type; }
+        sf::Vector2f getPos() const override { return m._Pos; }
+        float_t getHitbox() const override { return m._Hitbox; }
+        sf::Vector2f getSize() const { return m._Size; }
+        sf::Color getColor() const { return m._Color; }
+        uint32_t getNutrition() const { return m._Nutrition; }
+        uint32_t getLifespan() const { return m._Lifespan; }
+
+        void setPos(sf::Vector2f pos) override { m._Pos = pos; }
+    };
 }
 
-Food::~Food()
+namespace R_01
 {
-}
+    Food Food::create(sf::Vector2f size, sf::Vector2f pos, uint32_t nutrition, uint32_t lifespan)
+    {
+        return Food(M{
+            ._Type = ObjectType::FOOD,
 
-void Food::draw(sf::RenderWindow &window)
-{
-    sf::CircleShape body(m_BodySize.x);
-    body.setFillColor(sf::Color::Green);
-    body.setPosition(m_Position);
-    body.setOrigin(m_BodySize);
-    window.draw(body);
-}
+            ._Size = size,
+            ._Pos = pos,
+            ._Color = sf::Color::Green,
+            ._Hitbox = 0.0f,
 
-void Food::update()
-{
+            ._Nutrition = nutrition,
+            ._Lifespan = lifespan});
+    }
 }

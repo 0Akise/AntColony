@@ -2,66 +2,62 @@
 
 #include <SFML/Graphics.hpp>
 
-#include <vector> // std::vector
+#include <sim/object.hpp>
 
-class Hive
+#include <cmath> // std::min
+
+namespace R_01
 {
-private:
-    sf::Vector2f m_BodySize;
-    float m_HitboxSize;
-    sf::Color m_Color;
+    class Hive : public IObject
+    {
+    private:
+        struct M
+        {
+            ObjectType _Type;
 
-    sf::Vector2f m_Position;
+            sf::Vector2f _Size;
+            sf::Vector2f _Pos;
+            sf::Color _Color;
+            float_t _Hitbox;
 
-    unsigned int m_AntSpawnRate;
+            uint32_t _HitPoints;
+            uint32_t _AntSpawnRate;
+            uint32_t _FoodStored;
+        } m;
 
-    unsigned int m_FoodStored;
+        explicit Hive(M m) : m(std::move(m)) {}
 
-public:
-    Hive(sf::Color color, sf::Vector2f position, unsigned int maxAntCount, unsigned int antSpawnRate);
-    ~Hive();
+    public:
+        static Hive create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, uint32_t hitPoints, uint32_t antSpawnRate);
+        ~Hive() = default;
 
-    void draw(sf::RenderWindow &window);
-    void update();
+        ObjectType getType() const override { return m._Type; }
+        sf::Vector2f getPos() const override { return m._Pos; }
+        float_t getHitbox() const override { return m._Hitbox; }
+        sf::Vector2f getSize() const { return m._Size; }
+        sf::Color getColor() const { return m._Color; }
+        uint32_t getHitPoints() const { return m._HitPoints; }
+        uint32_t getAntSpawnRate() const { return m._AntSpawnRate; }
+        uint32_t getFoodStored() const { return m._FoodStored; }
 
-    sf::Vector2f getSize() const { return m_BodySize; }
-    float getCollisionRadius() const { return m_HitboxSize; }
-    sf::Color getColor() const { return m_Color; }
-    sf::Vector2f getPosition() const { return m_Position; }
-    unsigned int getAntSpawnRate() const { return m_AntSpawnRate; }
-    unsigned int getFoodStored() const { return m_FoodStored; }
-
-    void storeFood(float nutrition);
-};
-
-Hive::Hive(sf::Color color, sf::Vector2f position, unsigned int maxAntCount, unsigned int antSpawnRate)
-    : m_BodySize(sf::Vector2f(100.0f, 100.0f)),
-      m_HitboxSize(100.0f),
-      m_Color(color),
-      m_Position(position),
-      m_AntSpawnRate(antSpawnRate),
-      m_FoodStored(0)
-{
+        void setPos(sf::Vector2f pos) override { m._Pos = pos; }
+    };
 }
 
-Hive::~Hive() {}
-
-void Hive::draw(sf::RenderWindow &window)
+namespace R_01
 {
-    sf::CircleShape hive(m_BodySize.x, 60);
-    hive.setFillColor(m_Color);
-    hive.setOutlineColor(sf::Color(255, 255, 255, 255));
-    hive.setOutlineThickness(5.0);
-    hive.setOrigin(m_BodySize);
-    hive.setPosition(m_Position);
-    window.draw(hive);
-}
+    Hive Hive::create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, uint32_t hitPoints, uint32_t antSpawnRate)
+    {
+        return Hive(M{
+            ._Type = ObjectType::HIVE,
 
-void Hive::update()
-{
-}
+            ._Size = size,
+            ._Pos = pos,
+            ._Color = color,
+            ._Hitbox = std::min(size.x, size.y),
 
-void Hive::storeFood(float nutrition)
-{
-    m_FoodStored += nutrition;
+            ._HitPoints = hitPoints,
+            ._AntSpawnRate = antSpawnRate,
+            ._FoodStored = 0});
+    }
 }

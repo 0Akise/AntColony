@@ -1,82 +1,92 @@
 #pragma once
 
 #include <SFML/Graphics.hpp>
-#include <SFML/System.hpp>
 
-#include <sim/hive.hpp>
 #include <sim/ant.hpp>
 #include <sim/food.hpp>
+#include <sim/hive.hpp>
 #include <sim/pheromone.hpp>
-#include <resvault.hpp>
-#include <util.hpp>
 
-#include <memory>        // std::unique_ptr
-#include <vector>        // std::vector
-#include <cmath>         // std::cos, std::sin
-#include <unordered_map> // std::unordered_map
-
-class World
+namespace R_01
 {
-private:
-    float m_WorldWidth;
-    float m_WorldHeight;
+    class World
+    {
+    private:
+        struct M
+        {
+            sf::Vector2f _Size;
 
-    std::vector<Hive> m_Hives;
-    std::vector<Ant> m_Ants;
-    std::vector<Food> m_Foods;
-    std::vector<Pheromone> m_Pheromones;
+            std::vector<Hive> _Hives;
+            std::vector<Ant> _Ants;
+            std::vector<Food> _Foods;
+            std::vector<Pheromone> _Pheromones;
+        } m;
 
-    float m_CellSize;
-    std::unordered_map<CellCoord, std::vector<Hive *>> m_HiveGrid;
-    std::unordered_map<CellCoord, std::vector<Ant *>> m_AntGrid;
-    std::unordered_map<CellCoord, std::vector<Food *>> m_FoodGrid;
-    std::unordered_map<CellCoord, std::vector<Pheromone *>> m_PheromoneGrid;
+        explicit World(M m) : m(std::move(m)) {}
 
-    unsigned int m_HiveCount;
-    unsigned int m_AntCount;
+    public:
+        static World create(float width, float height);
+        static World create(sf::Vector2f size);
 
-public:
-    World(float width, float height);
-    ~World();
+        sf::Vector2f getSize() const { return m._Size; }
+        std::vector<Hive> &getHives() { return m._Hives; }
+        std::vector<Ant> &getAnts() { return m._Ants; }
+        std::vector<Food> &getFoods() { return m._Foods; }
+        std::vector<Pheromone> &getPheromones() { return m._Pheromones; }
 
-    void draw(sf::RenderWindow &window, sf::Vector2f worldPos, ResourceVault &vault);
-    void update();
-
-    sf::Vector2f getSize() const { return sf::Vector2f(m_WorldWidth, m_WorldHeight); }
-
-    void spawnHive(sf::Color color, sf::Vector2f position, unsigned int maxAntCount, unsigned int antSpawnRate);
-    void spawnAnt(unsigned int hiveIndex);
-    void spawnFood(sf::Vector2f position, float hungerValue, unsigned int lifespan);
-    void spawnClumpOfFood(sf::Vector2f position, unsigned int count, float hungerValue, unsigned int lifespan);
-    void spawnPheromone(Ant *ant, float strength, float lifespan);
-
-    void insertHive(Hive *hive, float cellSize);
-    void insertAnt(Ant *ant, float cellSize);
-    void insertFood(Food *food, float cellSize);
-    void insertPheromone(Pheromone *pheromone, float cellSize);
-    bool areAntsColliding(Ant *ant1, Ant *ant2);
-    bool isAntCollidingWithHive(Ant *ant, Hive *hive);
-    bool isAntCollidingWithFood(Ant *ant, Food *food);
-    bool isAntOnPheromone(Ant *ant, Pheromone *pheromone);
-    void checkAntsCollision();
-    void checkAntsBorderCollision();
-    void checkAntHiveCollision();
-    void checkAntFoodCollision();
-    void checkAntsFollowPheromone();
-    void checkRemove();
-};
-
-World::World(float width, float height)
-    : m_WorldWidth(width),
-      m_WorldHeight(height),
-      m_CellSize(50.0f),
-      m_HiveCount(0),
-      m_AntCount(0)
-{
+        void spawnHive(sf::Vector2f pos, sf::Color color);
+        void spawnAnt(sf::Vector2f pos, sf::Color color, float_t angle, uint32_t health, uint32_t hunger);
+        void spawnFood(sf::Vector2f pos, uint32_t nutrition, uint32_t lifespan);
+        void spawnPheromone(sf::Vector2f pos, sf::Color color, float_t angle, float_t strength, uint32_t lifespan);
+    };
 }
 
-World::~World() {}
+namespace R_01
+{
+    World World::create(float width, float height)
+    {
+        return World(M{
+            ._Size = sf::Vector2f(width, height),
 
+            ._Hives = std::vector<Hive>(),
+            ._Ants = std::vector<Ant>(),
+            ._Foods = std::vector<Food>(),
+            ._Pheromones = std::vector<Pheromone>()});
+    }
+
+    World World::create(sf::Vector2f size)
+    {
+        return World(M{
+            ._Size = size,
+
+            ._Hives = std::vector<Hive>(),
+            ._Ants = std::vector<Ant>(),
+            ._Foods = std::vector<Food>(),
+            ._Pheromones = std::vector<Pheromone>()});
+    }
+
+    void World::spawnHive(sf::Vector2f pos, sf::Color color)
+    {
+        m._Hives.push_back(Hive::create(sf::Vector2f(50.0f, 50.0f), pos, color, 10000, 5));
+    }
+
+    void World::spawnAnt(sf::Vector2f pos, sf::Color color, float_t angle, uint32_t health, uint32_t hunger)
+    {
+        m._Ants.push_back(Ant::create(sf::Vector2f(10.0f, 20.0f), pos, color, angle, health, hunger));
+    }
+
+    void World::spawnFood(sf::Vector2f pos, uint32_t nutrition, uint32_t lifespan)
+    {
+        m._Foods.push_back(Food::create(sf::Vector2f(5.0f, 5.0f), pos, nutrition, lifespan));
+    }
+
+    void World::spawnPheromone(sf::Vector2f pos, sf::Color color, float_t angle, float_t strength, uint32_t lifespan)
+    {
+        m._Pheromones.push_back(Pheromone::create(sf::Vector2f(3.0f, 3.0f), pos, color, angle, strength, lifespan));
+    }
+}
+
+/*
 void World::draw(sf::RenderWindow &window, sf::Vector2f worldPos, ResourceVault &vault)
 {
     sf::RectangleShape shape(sf::Vector2f(m_WorldWidth, m_WorldHeight));
@@ -212,19 +222,6 @@ void World::spawnFood(sf::Vector2f position, float nutrition, unsigned int lifes
     sf::Vector2f foodSize(5.0f, 5.0f);
 
     m_Foods.push_back(Food(foodSize, position, nutrition, lifespan));
-}
-
-void World::spawnClumpOfFood(sf::Vector2f position, unsigned int count, float nutrition, unsigned int lifespan)
-{
-    for (unsigned int i = 0; i < count; i++)
-    {
-        float angle = MathUtil::degtorad(rand() % 360);
-        float distance = static_cast<float>(rand() % 20);
-
-        sf::Vector2f foodPos = position + sf::Vector2f(std::cos(angle) * distance, std::sin(angle) * distance);
-
-        spawnFood(foodPos, nutrition, lifespan);
-    }
 }
 
 void World::spawnPheromone(Ant *ant, float strength, float lifespan)
@@ -536,3 +533,4 @@ void World::checkRemove()
         }
     }
 }
+*/

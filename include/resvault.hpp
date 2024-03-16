@@ -2,19 +2,22 @@
 
 #include <SFML/Graphics.hpp>
 
-struct ResourceVault
+namespace R_01
 {
-    sf::Font font;
-    sf::Texture antTexture;
-
-    ResourceVault()
+    struct ResourceVault
     {
-        if (!font.loadFromFile("res/font.ttf"))
-            throw std::runtime_error("Failed to load font");
-        
-        if (!antTexture.loadFromFile("res/ant.png"))
-            throw std::runtime_error("Failed to load ant texture");
+        sf::Font font;
+        sf::Texture antTexture;
 
-        antTexture.setSmooth(true);
-    }
-};
+        ResourceVault()
+        {
+            if (!font.loadFromFile("res/font.ttf"))
+                throw std::runtime_error("Failed to load font");
+
+            if (!antTexture.loadFromFile("res/ant.png"))
+                throw std::runtime_error("Failed to load ant texture");
+
+            antTexture.setSmooth(true);
+        }
+    };
+}

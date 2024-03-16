@@ -20,7 +20,7 @@ add_executable(MyResearch1 ${HEADERS} ${SOURCES})
 
 target_include_directories(MyResearch1 PRIVATE include)
 target_link_libraries(MyResearch1 PRIVATE ${SFML_LIBRARIES})
-target_compile_features(MyResearch1 PRIVATE cxx_std_17)
+target_compile_features(MyResearch1 PRIVATE cxx_std_20)
 
 if(MSVC)
     target_compile_options(MyResearch1 PRIVATE /W4 /WX)

@@ -32,3 +32,4 @@ in order to change project name, change `MyResearch1` in `CMakeLists.txt` file.
 - [ ] Sidepanel MousePos is not set respect to the World
 - [ ] Hive hitbox is not accurate
 - [ ] Ant textures escape border of the world
+- [ ] Ants are following different color of pheromones

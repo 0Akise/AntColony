@@ -1,184 +1,243 @@
 #pragma once
 
-#include <SFML/Graphics.hpp>
-#include <SFML/System.hpp>
-#include <SFML/Window.hpp>
-
-#include <sim/world.hpp>
-#include <camera.hpp>
+#include <sim/_sim.hpp>
+#include <ui/_ui.hpp>
+#include <control.hpp>
 #include <resvault.hpp>
 
-#include <memory>  // std::unique_ptr
-#include <cstring> // std::string
+#include <memory>        // std::move, std::unique_ptr
+#include <unordered_map> // std::unordered_map
+#include <iostream>      // std::cout, std::endl
 
-enum class ProgramState
+namespace R_01
 {
-    Paused,
-    Running,
-};
+    class Program
+    {
+    private:
+        struct M
+        {
+            uint32_t _Ticks;
+            sf::Clock _FrametimeClock;
+            ResourceVault _Vault;
+            Control _Control;
 
-class Program
-{
-private:
-    sf::RenderWindow m_Window;
-    unsigned int Ticks;
-    sf::Clock m_FrameTimeClock;
-    ProgramState m_State;
-    ResourceVault m_Vault;
+            int32_t _FabricSize;
+            World _World;
+            std::unordered_map<CellCoord, std::vector<IObject *>> _Field;
+        } m;
 
-    World m_World;
-    sf::Vector2f m_WorldPos;
+        explicit Program(M m) : m(std::move(m)) {}
 
-    Camera m_Camera;
-    sf::Vector2f m_CameraPos;
+    public:
+        static Program create(sf::RenderWindow &window);
 
-    unsigned int m_CurrentHiveIndex;
-    unsigned int m_CurrentAntIndex;
+        bool checkCollision(IObject *obj1, IObject *obj2);
 
-public:
-    Program();
-    ~Program();
+        void init();
+        void collision();
 
-    void control();
-    void paint(float scrW, float scrH);
-    void run();
-};
-
-Program::Program()
-    : m_Window(sf::VideoMode(sf::VideoMode::getDesktopMode().width, sf::VideoMode::getDesktopMode().height), "My Research 1: Ant Colony", sf::Style::None),
-      Ticks(0),
-      m_FrameTimeClock(),
-      m_State(ProgramState::Paused),
-      m_Vault(),
-      m_World(4200.0, 3000.0),
-      m_WorldPos(0.0, 0.0),
-      m_Camera(m_Window),
-      m_CameraPos(0.0, 0.0),
-      m_CurrentHiveIndex(0),
-      m_CurrentAntIndex(0)
-{
-    m_Window.setFramerateLimit(144);
-    m_Window.setVerticalSyncEnabled(true);
-
-    m_World.spawnHive(sf::Color::Green, sf::Vector2f(1000.0, 1000.0), 100, 1);
-    m_World.spawnHive(sf::Color::Red, sf::Vector2f(2000.0, 2000.0), 100, 1);
-    m_World.spawnClumpOfFood(sf::Vector2f(1000.0, 2000.0), 50, 100.0, 1000);
-    m_World.spawnClumpOfFood(sf::Vector2f(2000.0, 1000.0), 50, 100.0, 1000); 
+        void move(sf::RenderWindow &window, sf::Vector2f cameraPos, float cameraZoom);
+        void render(sf::RenderWindow &window);
+        void ui(sf::RenderWindow &window, sf::Vector2f screen);
+        void insert(IObject *obj, int32_t fabricSize);
+        void update(uint32_t ticks);
+        void run(sf::RenderWindow &window);
+    };
 }
 
-Program::~Program() {}
-
-void Program::control()
+namespace R_01
 {
-    sf::Event event;
-
-    while (m_Window.pollEvent(event))
+    bool Program::checkCollision(IObject *obj1, IObject *obj2)
     {
-        m_Camera.handle(event);
-
-        if (event.type == sf::Event::Closed)
+        if (obj1->getType() == ObjectType::ANT && obj2->getType() == ObjectType::ANT)
         {
-            m_Window.close();
+            sf::Vector2f ant1Pos = static_cast<Ant *>(obj1)->getPos();
+            sf::Vector2f ant2Pos = static_cast<Ant *>(obj2)->getPos();
+            float ant1Hitbox = static_cast<Ant *>(obj1)->getHitbox();
+            float ant2Hitbox = static_cast<Ant *>(obj2)->getHitbox();
+            float distance = MathUtil::distance(ant1Pos, ant2Pos);
+
+            return distance < (ant1Hitbox + ant2Hitbox);
+        }
+        else
+        {
+            return false;
+        }
+    }
+}
+
+namespace R_01
+{
+    void Program::init()
+    {
+        m._World.spawnHive(sf::Vector2f(200.0, 200.0), sf::Color(255, 0, 0, 255));
+        // m._World.spawnHive(sf::Vector2f(2400.0, 1500.0), sf::Color(0, 255, 0, 255));
+    }
+
+    void Program::collision()
+    {
+        for (auto &ant : m._World.getAnts())
+        {
+            if (ant.getPos().x < 0.0)
+                ant.setPos(sf::Vector2f(0.0, ant.getPos().y));
+            if (ant.getPos().x > m._World.getSize().x)
+                ant.setPos(sf::Vector2f(m._World.getSize().x, ant.getPos().y));
+            if (ant.getPos().y < 0.0)
+                ant.setPos(sf::Vector2f(ant.getPos().x, 0.0));
+            if (ant.getPos().y > m._World.getSize().y)
+                ant.setPos(sf::Vector2f(ant.getPos().x, m._World.getSize().y));
         }
 
-        if ((event.type == sf::Event::KeyPressed) && (event.key.code == sf::Keyboard::Escape))
+        for (auto &fabric : m._Field)
         {
-            m_Window.close();
-        }
+            auto &objects = fabric.second;
 
-        if ((event.type == sf::Event::KeyPressed) && (event.key.code == sf::Keyboard::Space))
-        {
-            if (m_State == ProgramState::Paused)
+            for (size_t i = 0; i < objects.size(); i++)
             {
-                m_State = ProgramState::Running;
-            }
-            else
-            {
-                m_State = ProgramState::Paused;
+                for (size_t j = i + 1; j < objects.size(); j++)
+                {
+                    if (checkCollision(objects[i], objects[j]))
+                    {
+                        // TODO
+                    }
+                }
             }
         }
     }
 }
 
-void Program::paint(float scrW, float scrH)
+namespace R_01
 {
-    std::string state = "State: ";
-
-    if (m_State == ProgramState::Paused)
-        state += "Paused";
-    else
-        state += "Running";
-
-    sf::RectangleShape side(sf::Vector2f(400.0, scrH));
-    side.setFillColor(sf::Color(200, 200, 200, 255));
-    side.setPosition(sf::Vector2f(0, 0));
-    m_Window.draw(side);
-
-    sf::Text textFrametime;
-    textFrametime.setFont(m_Vault.font);
-    textFrametime.setString("Frametime: " + std::to_string(m_FrameTimeClock.restart().asMilliseconds()) + " ms");
-    textFrametime.setCharacterSize(16);
-    textFrametime.setFillColor(sf::Color::Black);
-    textFrametime.setPosition(sf::Vector2f(10, 10));
-    m_Window.draw(textFrametime);
-
-    sf::Text textCurrentState;
-    textCurrentState.setFont(m_Vault.font);
-    textCurrentState.setString(state);
-    textCurrentState.setCharacterSize(16);
-    textCurrentState.setFillColor(sf::Color::Black);
-    textCurrentState.setPosition(sf::Vector2f(10, 30));
-    m_Window.draw(textCurrentState);
-
-    sf::Text textTicks;
-    textTicks.setFont(m_Vault.font);
-    textTicks.setString("Ticks: " + std::to_string(Ticks));
-    textTicks.setCharacterSize(16);
-    textTicks.setFillColor(sf::Color::Black);
-    textTicks.setPosition(sf::Vector2f(10, 50));
-    m_Window.draw(textTicks);
-
-    sf::Text textMousePos;
-    textMousePos.setFont(m_Vault.font);
-    textMousePos.setString("Mouse: " + std::to_string(sf::Mouse::getPosition().x) + ", " + std::to_string(sf::Mouse::getPosition().y));
-    textMousePos.setCharacterSize(16);
-    textMousePos.setFillColor(sf::Color::Black);
-    textMousePos.setPosition(sf::Vector2f(10, 70));
-    m_Window.draw(textMousePos);
-
-    sf::Text textCameraPos;
-    textCameraPos.setFont(m_Vault.font);
-    textCameraPos.setString("Camera: " + std::to_string(m_CameraPos.x) + ", " + std::to_string(m_CameraPos.y));
-    textCameraPos.setCharacterSize(16);
-    textCameraPos.setFillColor(sf::Color::Black);
-    textCameraPos.setPosition(sf::Vector2f(10, 90));
-    m_Window.draw(textCameraPos);
-}
-
-void Program::run()
-{
-    float scrW = (float)sf::VideoMode::getDesktopMode().width;
-    float scrH = (float)sf::VideoMode::getDesktopMode().height;
-
-    while (m_Window.isOpen())
+    Program Program::create(sf::RenderWindow &window)
     {
-        m_Window.clear();
+        return Program(M{
+            ._Ticks = 0,
+            ._FrametimeClock = sf::Clock(),
+            ._Vault = ResourceVault(),
 
-        control();
+            ._Control = Control::create(),
 
-        if (m_State == ProgramState::Running)
+            ._FabricSize = 10,
+            ._World = World::create(4000.0, 3000.0),
+            ._Field = std::unordered_map<CellCoord, std::vector<IObject *>>()});
+    }
+
+    void Program::move(sf::RenderWindow &window, sf::Vector2f cameraPos, float cameraZoom)
+    {
+        sf::View view = window.getView();
+
+        view.setCenter(cameraPos);
+        view.setSize(window.getSize().x * cameraZoom, window.getSize().y * cameraZoom);
+        window.setView(view);
+    }
+
+    void Program::render(sf::RenderWindow &window)
+    {
+        sf::RectangleShape worldShape(m._World.getSize());
+        worldShape.setOutlineColor(sf::Color(255, 255, 255, 255));
+        worldShape.setOutlineThickness(5.0);
+        worldShape.setFillColor(sf::Color(51, 51, 51, 255));
+        worldShape.setPosition(sf::Vector2f(0.0f, 0.0f));
+        window.draw(worldShape);
+
+        for (auto &hive : m._World.getHives())
         {
-            m_World.update();
-
-            Ticks++;
+            sf::CircleShape hiveShape(hive.getSize().x, 60);
+            hiveShape.setOutlineColor(sf::Color(255, 255, 255, 255));
+            hiveShape.setOutlineThickness(5.0);
+            hiveShape.setFillColor(hive.getColor());
+            hiveShape.setPosition(hive.getPos());
+            hiveShape.setOrigin(hive.getSize().x, hive.getSize().y);
+            window.draw(hiveShape);
         }
 
-        m_Window.setView(m_Camera.getView());
-        m_World.draw(m_Window, m_WorldPos, m_Vault);
+        for (auto &ant : m._World.getAnts())
+        {
+            sf::RectangleShape antShape(ant.getSize());
+            antShape.setTexture(&m._Vault.antTexture);
+            antShape.setFillColor(ant.getColor());
+            antShape.setPosition(ant.getPos());
+            antShape.setRotation(ant.getAngle() + 90.0f);
+            antShape.setOrigin(ant.getSize().x / 2, ant.getSize().y / 2);
+            window.draw(antShape);
+        }
+    }
 
-        m_Window.setView(m_Window.getDefaultView());
-        paint(scrW, scrH);
+    void Program::ui(sf::RenderWindow &window, sf::Vector2f screen)
+    {
+        sf::Text text;
+        text.setFont(m._Vault.font);
+        text.setCharacterSize(24);
+        text.setFillColor(sf::Color::White);
+        text.setStyle(sf::Text::Bold);
+        text.setString("FPS: " + std::to_string(1.0f / m._FrametimeClock.restart().asSeconds()));
+        text.setPosition(10.0f, 10.0f);
+        window.draw(text);
+    }
 
-        m_Window.display();
+    void Program::insert(IObject *obj, int32_t fabricSize)
+    {
+        CellCoord coord = {
+            static_cast<int32_t>(obj->getPos().x / fabricSize),
+            static_cast<int32_t>(obj->getPos().y / fabricSize)};
+
+        m._Field[coord].push_back(obj);
+    }
+
+    void Program::update(uint32_t ticks)
+    {
+        m._Field.clear();
+
+        for (auto &hive : m._World.getHives())
+        {
+            insert(&hive, m._FabricSize);
+        }
+
+        for (auto &ant : m._World.getAnts())
+        {
+            insert(&ant, m._FabricSize);
+
+            ant.think();
+        }
+
+        for (auto &hive : m._World.getHives())
+        {
+            if (ticks % hive.getAntSpawnRate() == 0)
+            {
+                sf::Vector2f antPos = sf::Vector2f(
+                    (hive.getPos().x) + std::cos(MathUtil::degtorad(rand() % 360)) * hive.getHitbox(),
+                    (hive.getPos().y) + std::sin(MathUtil::degtorad(rand() % 360)) * hive.getHitbox());
+
+                m._World.spawnAnt(antPos, hive.getColor(), std::rand() % 360, 100, 100);
+            }
+        }
+
+        try { collision(); }
+        catch (const std::exception &e) { std::cout << e.what() << std::endl; }
+    }
+
+    void Program::run(sf::RenderWindow &window)
+    {
+        init();
+
+        while (window.isOpen())
+        {
+            window.clear();
+            m._Control.process(window);
+
+            if (m._Control.getState() == ProgramState::Running)
+            {
+                update(m._Ticks);
+                m._Ticks++;
+            }
+
+            move(window, m._Control.getCameraPos(), m._Control.getCameraZoom());
+            render(window);
+
+            move(window, window.getDefaultView().getCenter(), 1.0);
+            ui(window, window.getView().getSize());
+
+            window.display();
+        }
     }
 }

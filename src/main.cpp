@@ -2,9 +2,13 @@
 
 int main()
 {
-    Program program;
+    sf::RenderWindow window(sf::VideoMode(sf::VideoMode::getDesktopMode().width, sf::VideoMode::getDesktopMode().height), "Ant Colony v0.2", sf::Style::None);
+    R_01::Program program = R_01::Program::create(window);
 
-    program.run();
+    window.setFramerateLimit(60);
+    window.setVerticalSyncEnabled(false);
+
+    program.run(window);
 
     return 0;
 }

@@ -2,91 +2,93 @@
 
 #include <SFML/Graphics.hpp>
 
-#include <sim/food.hpp>
-#include <sim/pheromone.hpp>
-#include <sim/hive.hpp>
+#include <sim/object.hpp>
 #include <util.hpp>
 
-#include <cmath> // std::cos, std::sin
+#include <cmath> // std::min
 
-class Ant
+namespace R_01
 {
-private:
-    sf::Vector2f m_BodySize;
-    float m_HitboxSize;
-    sf::Color m_Color;
+    class Ant : public IObject
+    {
+    private:
+        struct M
+        {
+            ObjectType _Type;
 
-    sf::Vector2f m_Position;
-    float m_Velocity;
-    float m_Angle;
+            sf::Vector2f _Size;
+            sf::Vector2f _Pos;
+            sf::Color _Color;
+            float_t _Hitbox;
 
-    unsigned int m_Health;
-    unsigned int m_Hunger;
+            float_t _Velocity;
+            float_t _Angle;
 
-    bool m_IsCarryingFood;
+            uint32_t _Health;
+            uint32_t _Hunger;
 
-    Hive *m_Hive;
+            bool _IsCarryingFood;
+        } m;
 
-public:
-    Ant(sf::Vector2f bodysize, sf::Color color, sf::Vector2f position, float velocity, float angle, unsigned int health, unsigned int hunger, Hive *hive);
-    ~Ant();
+        explicit Ant(M m) : m(std::move(m)) {}
 
-    void draw(sf::RenderWindow &window, const sf::Texture &texture);
-    void update();
+    public:
+        static Ant create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, float_t angle, uint32_t health, uint32_t hunger);
+        ~Ant() = default;
+        void think();
 
-    sf::Color getColor() const { return m_Color; }
-    sf::Vector2f getPosition() const { return m_Position; }
-    float getAngle() const { return m_Angle; }
-    float getCollisionRadius() const { return m_HitboxSize; }
-    bool getIsCarryingFood() const { return m_IsCarryingFood; }
-    Hive *getHive() const { return m_Hive; }
-    void setPosition(sf::Vector2f position) { m_Position = position; }
-    void setAngle(float angle) { m_Angle = angle; }
-    void setIsCarryingFood(bool isCarryingFood) { m_IsCarryingFood = isCarryingFood; }
-};
+        ObjectType getType() const override { return m._Type; }
+        sf::Vector2f getPos() const override { return m._Pos; }
+        float_t getHitbox() const override { return m._Hitbox; }
+        sf::Vector2f getSize() const { return m._Size; }
+        sf::Color getColor() const { return m._Color; }
+        float_t getVelocity() const { return m._Velocity; }
+        float_t getAngle() const { return m._Angle; }
+        uint32_t getHealth() const { return m._Health; }
+        uint32_t getHunger() const { return m._Hunger; }
+        bool getIsCarryingFood() const { return m._IsCarryingFood; }
 
-Ant::Ant(sf::Vector2f bodysize, sf::Color color, sf::Vector2f position, float velocity, float angle, unsigned int health, unsigned int hunger, Hive *hive)
-    : m_BodySize(bodysize),
-      m_HitboxSize(std::min(bodysize.x, bodysize.y) / 2.0f),
-      m_Color(color),
-      m_Position(position),
-      m_Velocity(velocity),
-      m_Angle(angle),
-      m_Health(health),
-      m_Hunger(hunger),
-      m_IsCarryingFood(false),
-      m_Hive(hive)
-{
+        void setPos(sf::Vector2f pos) override { m._Pos = pos; }
+        void setVelocity(float_t velocity) { m._Velocity = velocity; }
+        void setAngle(float_t angle) { m._Angle = angle; }
+        void setHealth(uint32_t health) { m._Health = health; }
+        void setHunger(uint32_t hunger) { m._Hunger = hunger; }
+    };
 }
 
-Ant::~Ant() {}
-
-void Ant::draw(sf::RenderWindow &window, const sf::Texture &texture)
+namespace R_01
 {
-    sf::RectangleShape ant(m_BodySize);
-    ant.setTexture(&texture);
-    ant.setFillColor(m_Color);
-    ant.setPosition(m_Position);
-    ant.setRotation(m_Angle + 90.0f);
-    ant.setOrigin(m_BodySize.x / 2.0f, m_BodySize.y / 2.0f);
-    window.draw(ant);
-
-    if (m_IsCarryingFood)
+    Ant Ant::create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, float_t angle, uint32_t health, uint32_t hunger)
     {
-        sf::CircleShape food(5.0f);
-        food.setFillColor(sf::Color::Green);
-        food.setPosition(m_Position);
-        window.draw(food);
+        return Ant(M{
+            ._Type = ObjectType::ANT,
+
+            ._Size = size,
+            ._Pos = pos,
+            ._Color = color,
+            ._Hitbox = std::min(size.x, size.y),
+
+            ._Velocity = 0.0f,
+            ._Angle = angle,
+
+            ._Health = health,
+            ._Hunger = hunger,
+
+            ._IsCarryingFood = false});
     }
-}
 
-void Ant::update()
-{
-    m_Position.x += m_Velocity * std::cos(MathUtil::degtorad(m_Angle));
-    m_Position.y += m_Velocity * std::sin(MathUtil::degtorad(m_Angle));
-
-    if (m_IsCarryingFood)
+    void Ant::think()
     {
-        m_Angle = MathUtil::lerpangle(m_Angle, MathUtil::radtodeg(MathUtil::pointtowards(m_Position, m_Hive->getPosition())), 0.1f);
+        if (std::rand() % 50 == 0)
+            m._Velocity = 0.0f;
+
+        if (std::rand() % 10 == 0)
+            m._Velocity = 1.0f;
+
+        m._Pos.x += m._Velocity * std::cos(MathUtil::degtorad(m._Angle));
+        m._Pos.y += m._Velocity * std::sin(MathUtil::degtorad(m._Angle));
+
+        // add circular wiggles
+        m._Angle += (std::rand() % 3) - 1;
     }
 }

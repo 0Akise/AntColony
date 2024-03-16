@@ -2,59 +2,61 @@
 
 #include <SFML/Graphics.hpp>
 
-class Pheromone
+#include <sim/object.hpp>
+
+#include <cmath> // std::min
+
+namespace R_01
 {
-private:
-    sf::Vector2f m_BodySize;
-    float m_HitboxSize;
-    sf::Color m_Color;
-    sf::Vector2f m_Position;
-    float m_Angle;
+    class Pheromone : public IObject
+    {
+    private:
+        struct M
+        {
+            ObjectType _Type;
 
-    float m_Strength;
-    unsigned int m_Lifespan;
+            sf::Vector2f _Size;
+            sf::Vector2f _Pos;
+            sf::Color _Color;
+            float_t _Hitbox;
+            float_t _Angle;
 
-public:
-    Pheromone(sf::Vector2f bodysize, sf::Color color, sf::Vector2f position, float angle, float strength, unsigned int lifespan);
-    ~Pheromone();
+            float_t _Strength;
+            uint32_t _Lifespan;
+        } m;
 
-    void draw(sf::RenderWindow &window);
-    void update();
+        explicit Pheromone(M m) : m(std::move(m)) {}
 
-    float getCollisionRadius() const { return m_HitboxSize; }
-    sf::Color getColor() const { return m_Color; }
-    sf::Vector2f getPosition() const { return m_Position; }
-    float getAngle() const { return m_Angle; }
-    float getStrength() const { return m_Strength; }
-    unsigned int getLifespan() const { return m_Lifespan; }
-};
+    public:
+        static Pheromone create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, float_t angle, float_t strength, uint32_t lifespan);
 
-Pheromone::Pheromone(sf::Vector2f bodysize, sf::Color color, sf::Vector2f position, float angle, float strength, unsigned int lifespan)
-    : m_BodySize(bodysize),
-      m_HitboxSize(std::min(bodysize.x, bodysize.y) / 2.0f),
-      m_Color(color),
-      m_Position(position),
-      m_Angle(angle),
-      m_Strength(strength),
-      m_Lifespan(lifespan)
-{
+        ObjectType getType() const override { return m._Type; }
+        sf::Vector2f getPos() const override { return m._Pos; }
+        float_t getHitbox() const override { return m._Hitbox; }
+        sf::Vector2f getSize() const { return m._Size; }
+        sf::Color getColor() const { return m._Color; }
+        float_t getAngle() const { return m._Angle; }
+        float_t getStrength() const { return m._Strength; }
+        uint32_t getLifespan() const { return m._Lifespan; }
+
+        void setPos(sf::Vector2f pos) override { m._Pos = pos; }
+    };
 }
 
-Pheromone::~Pheromone()
+namespace R_01
 {
-}
+    Pheromone Pheromone::create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, float_t angle, float_t strength, uint32_t lifespan)
+    {
+        return Pheromone(M{
+            ._Type = ObjectType::PHEROMONE,
 
-void Pheromone::draw(sf::RenderWindow &window)
-{
-    sf::CircleShape body(m_BodySize.x, 3);
-    body.setFillColor(m_Color);
-    body.setPosition(m_Position);
-    body.setRotation(m_Angle + 90.0f);
-    body.setOrigin(m_BodySize);
-    window.draw(body);
-}
+            ._Size = size,
+            ._Pos = pos,
+            ._Color = color,
+            ._Hitbox = 0.0f,
+            ._Angle = angle,
 
-void Pheromone::update()
-{
-    m_Lifespan--;
+            ._Strength = strength,
+            ._Lifespan = lifespan});
+    }
 }
