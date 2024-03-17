@@ -44,7 +44,7 @@ namespace R_01
                 ._Color = color,
                 ._Hitbox = std::min(size.x, size.y) / 2.0f,
 
-                ._Velocity = 0.25f,
+                ._Velocity = 1.0f,
                 ._Angle = angle,
 
                 ._Health = health,

@@ -23,7 +23,7 @@ namespace R_01
 
             int32_t _FabricSize;
             World _World;
-            std::unordered_map<CellCoord, std::vector<std::unique_ptr<IObject>>> _Field;
+            std::unordered_map<CellCoord, std::vector<std::shared_ptr<IObject>>> _Field;
         } m;
 
         explicit Program(M m) : m(std::move(m)) {}
@@ -40,12 +40,12 @@ namespace R_01
 
                 ._FabricSize = 10,
                 ._World = World::create(4000.0, 3000.0),
-                ._Field = std::unordered_map<CellCoord, std::vector<std::unique_ptr<IObject>>>()});
+                ._Field = std::unordered_map<CellCoord, std::vector<std::shared_ptr<IObject>>>()});
         }
 
         void InitWorld();
-        void InsertObject(std::unique_ptr<IObject> obj, int32_t fabricSize);
-        bool CheckCollision(IObject *obj1, IObject *obj2);
+        void InsertObject(const std::shared_ptr<IObject> &obj, int32_t fabricSize);
+        bool CheckCollision(const std::shared_ptr<IObject> &obj1, const std::shared_ptr<IObject> &obj2);
         void HandleCollision();
 
         void Move(sf::RenderWindow &window, sf::Vector2f cameraPos, float cameraZoom);
@@ -64,16 +64,16 @@ namespace R_01
         // m._World.spawnHive(sf::Vector2f(2400.0, 1500.0), sf::Color(0, 255, 0, 255));
     }
 
-    void Program::InsertObject(std::unique_ptr<IObject> obj, int32_t fabricSize)
+    void Program::InsertObject(const std::shared_ptr<IObject> &obj, int32_t fabricSize)
     {
         CellCoord coord = {
             static_cast<int32_t>(obj->getPos().x / fabricSize),
             static_cast<int32_t>(obj->getPos().y / fabricSize)};
 
-        m._Field[coord].push_back(std::move(obj));
+        m._Field[coord].push_back(obj);
     }
 
-    bool Program::CheckCollision(IObject *obj1, IObject *obj2)
+    bool Program::CheckCollision(const std::shared_ptr<IObject> &obj1, const std::shared_ptr<IObject> &obj2)
     {
         auto pos1 = obj1->getPos();
         auto pos2 = obj2->getPos();
@@ -86,64 +86,37 @@ namespace R_01
 
     void Program::HandleCollision()
     {
-        // this does not work
         for (auto &[coord, objects] : m._Field)
         {
-            for (auto &obj: objects)
+            for (auto &first : objects)
             {
-                if (obj->getType() == ObjectType::ANT)
+                if (first->getPos().x < 0.0)
+                    first->setPos(sf::Vector2f(0.0, first->getPos().y));
+                if (first->getPos().x > m._World.getSize().x)
+                    first->setPos(sf::Vector2f(m._World.getSize().x, first->getPos().y));
+                if (first->getPos().y < 0.0)
+                    first->setPos(sf::Vector2f(first->getPos().x, 0.0));
+                if (first->getPos().y > m._World.getSize().y)
+                    first->setPos(sf::Vector2f(first->getPos().x, m._World.getSize().y));
+
+                for (auto &second : objects)
                 {
-                    if (obj->getPos().x < 0.0)
-                        obj->setPos(sf::Vector2f(0.0, obj->getPos().y));
-                    if (obj->getPos().x > m._World.getSize().x)
-                        obj->setPos(sf::Vector2f(m._World.getSize().x, obj->getPos().y));
-                    if (obj->getPos().y < 0.0)
-                        obj->setPos(sf::Vector2f(obj->getPos().x, 0.0));
-                    if (obj->getPos().y > m._World.getSize().y)
-                        obj->setPos(sf::Vector2f(obj->getPos().x, m._World.getSize().y));
+                    if ((first != second) && CheckCollision(first, second))
+                    {
+                        if (first->getType() == ObjectType::ANT && second->getType() == ObjectType::ANT)
+                        {
+                            sf::Vector2f direction = first->getPos() - second->getPos();
+                            float magnitude = MathUtil::magnitude(direction);
+
+                            direction /= magnitude;
+
+                            first->setPos(first->getPos() + direction * 0.25f);
+                            second->setPos(second->getPos() - direction * 0.25f);
+                        }
+                    }
                 }
             }
         }
-
-        /* this works
-        for (auto &ant : m._World.getAnts())
-        {
-            if (ant.getPos().x < 0.0)
-                ant.setPos(sf::Vector2f(0.0, ant.getPos().y));
-            if (ant.getPos().x > m._World.getSize().x)
-                ant.setPos(sf::Vector2f(m._World.getSize().x, ant.getPos().y));
-            if (ant.getPos().y < 0.0)
-                ant.setPos(sf::Vector2f(ant.getPos().x, 0.0));
-            if (ant.getPos().y > m._World.getSize().y)
-                ant.setPos(sf::Vector2f(ant.getPos().x, m._World.getSize().y));
-
-            for (auto &hive : m._World.getHives())
-            {
-                if (CheckCollision(&ant, &hive))
-                {
-                    sf::Vector2f direction = ant.getPos() - hive.getPos();
-                    float magnitude = MathUtil::magnitude(direction);
-                    
-                    direction /= magnitude;
-
-                    ant.setPos(ant.getPos() + direction);
-                }
-            }
-
-            for (auto &otherAnt : m._World.getAnts())
-            {
-                if ((&ant != &otherAnt) && CheckCollision(&ant, &otherAnt))
-                {
-                    sf::Vector2f direction = ant.getPos() - otherAnt.getPos();
-                    float magnitude = MathUtil::magnitude(direction);
-
-                    direction /= magnitude;
-
-                    ant.setPos(ant.getPos() + direction * 0.25f);
-                    otherAnt.setPos(otherAnt.getPos() - direction * 0.25f);
-                }
-            }
-        }*/
     }
 }
 
@@ -169,23 +142,23 @@ namespace R_01
 
         for (auto &hive : m._World.getHives())
         {
-            sf::CircleShape hiveShape(hive.getSize().x, 60);
+            sf::CircleShape hiveShape(hive->getSize().x, 60);
             hiveShape.setOutlineColor(sf::Color(255, 255, 255, 255));
             hiveShape.setOutlineThickness(5.0);
-            hiveShape.setFillColor(hive.getColor());
-            hiveShape.setPosition(hive.getPos());
-            hiveShape.setOrigin(hive.getSize().x, hive.getSize().y);
+            hiveShape.setFillColor(hive->getColor());
+            hiveShape.setPosition(hive->getPos());
+            hiveShape.setOrigin(hive->getSize().x, hive->getSize().y);
             window.draw(hiveShape);
         }
 
         for (auto &ant : m._World.getAnts())
         {
-            sf::RectangleShape antShape(ant.getSize());
+            sf::RectangleShape antShape(ant->getSize());
             antShape.setTexture(&m._Vault.antTexture);
-            antShape.setFillColor(ant.getColor());
-            antShape.setPosition(ant.getPos());
-            antShape.setRotation(ant.getAngle() + 90.0f);
-            antShape.setOrigin(ant.getSize().x / 2, ant.getSize().y / 2);
+            antShape.setFillColor(ant->getColor());
+            antShape.setPosition(ant->getPos());
+            antShape.setRotation(ant->getAngle() + 90.0f);
+            antShape.setOrigin(ant->getSize().x / 2, ant->getSize().y / 2);
             window.draw(antShape);
         }
     }
@@ -206,28 +179,25 @@ namespace R_01
     {
         m._Field.clear();
 
-        for (auto &hive : m._World.getHives())
+        for (const auto &hive : m._World.getHives())
         {
-            InsertObject(std::make_unique<Hive>(hive), m._FabricSize);
-        }
+            InsertObject(hive, m._FabricSize);
 
-        for (auto &ant : m._World.getAnts())
-        {
-            InsertObject(std::make_unique<Ant>(ant), m._FabricSize);
-
-            ant.think();
-        }
-
-        for (auto &hive : m._World.getHives())
-        {
-            if (ticks % hive.getAntSpawnRate() == 0)
+            if (ticks % hive->getAntSpawnRate() == 0)
             {
                 sf::Vector2f antPos = sf::Vector2f(
-                    (hive.getPos().x) + std::cos(MathUtil::degtorad(rand() % 360)) * hive.getHitbox(),
-                    (hive.getPos().y) + std::sin(MathUtil::degtorad(rand() % 360)) * hive.getHitbox());
+                    (hive->getPos().x) + std::cos(MathUtil::degtorad(rand() % 360)) * hive->getHitbox(),
+                    (hive->getPos().y) + std::sin(MathUtil::degtorad(rand() % 360)) * hive->getHitbox());
 
-                m._World.spawnAnt(antPos, hive.getColor(), std::rand() % 360, 100, 100);
+                m._World.spawnAnt(antPos, hive->getColor(), rand() % 360, 100, 100);
             }
+        }
+
+        for (const auto &ant : m._World.getAnts())
+        {
+            InsertObject(ant, m._FabricSize);
+
+            ant->think();
         }
 
         HandleCollision();
