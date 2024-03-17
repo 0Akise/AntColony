@@ -28,7 +28,21 @@ namespace R_01
         explicit Hive(M m) : m(std::move(m)) {}
 
     public:
-        static Hive create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, uint32_t hitPoints, uint32_t antSpawnRate);
+        static Hive create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, uint32_t hitPoints, uint32_t antSpawnRate)
+        {
+            return Hive(M{
+                ._Type = ObjectType::HIVE,
+
+                ._Size = size,
+                ._Pos = pos,
+                ._Color = color,
+                ._Hitbox = std::min(size.x, size.y),
+
+                ._HitPoints = hitPoints,
+                ._AntSpawnRate = antSpawnRate,
+                ._FoodStored = 0});
+        }
+
         ~Hive() = default;
 
         ObjectType getType() const override { return m._Type; }
@@ -42,22 +56,4 @@ namespace R_01
 
         void setPos(sf::Vector2f pos) override { m._Pos = pos; }
     };
-}
-
-namespace R_01
-{
-    Hive Hive::create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, uint32_t hitPoints, uint32_t antSpawnRate)
-    {
-        return Hive(M{
-            ._Type = ObjectType::HIVE,
-
-            ._Size = size,
-            ._Pos = pos,
-            ._Color = color,
-            ._Hitbox = std::min(size.x, size.y),
-
-            ._HitPoints = hitPoints,
-            ._AntSpawnRate = antSpawnRate,
-            ._FoodStored = 0});
-    }
 }

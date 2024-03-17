@@ -43,6 +43,11 @@ namespace R_01
             return distance(v1.x, v1.y, v2.x, v2.y);
         }
 
+        static float magnitude(sf::Vector2f v)
+        {
+            return std::sqrt(v.x * v.x + v.y * v.y);
+        }
+
         static float pointtowards(sf::Vector2f from, sf::Vector2f to)
         {
             return std::atan2(to.y - from.y, to.x - from.x);

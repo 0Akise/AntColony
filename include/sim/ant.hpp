@@ -6,6 +6,7 @@
 #include <util.hpp>
 
 #include <cmath> // std::min
+#include <iostream>
 
 namespace R_01
 {
@@ -33,8 +34,27 @@ namespace R_01
         explicit Ant(M m) : m(std::move(m)) {}
 
     public:
-        static Ant create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, float_t angle, uint32_t health, uint32_t hunger);
+        static Ant create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, float_t angle, uint32_t health, uint32_t hunger)
+        {
+            return Ant(M{
+                ._Type = ObjectType::ANT,
+
+                ._Size = size,
+                ._Pos = pos,
+                ._Color = color,
+                ._Hitbox = std::min(size.x, size.y) / 2.0f,
+
+                ._Velocity = 0.25f,
+                ._Angle = angle,
+
+                ._Health = health,
+                ._Hunger = hunger,
+
+                ._IsCarryingFood = false});
+        }
+
         ~Ant() = default;
+
         void think();
 
         ObjectType getType() const override { return m._Type; }
@@ -58,37 +78,11 @@ namespace R_01
 
 namespace R_01
 {
-    Ant Ant::create(sf::Vector2f size, sf::Vector2f pos, sf::Color color, float_t angle, uint32_t health, uint32_t hunger)
-    {
-        return Ant(M{
-            ._Type = ObjectType::ANT,
-
-            ._Size = size,
-            ._Pos = pos,
-            ._Color = color,
-            ._Hitbox = std::min(size.x, size.y),
-
-            ._Velocity = 0.0f,
-            ._Angle = angle,
-
-            ._Health = health,
-            ._Hunger = hunger,
-
-            ._IsCarryingFood = false});
-    }
-
     void Ant::think()
     {
-        if (std::rand() % 50 == 0)
-            m._Velocity = 0.0f;
-
-        if (std::rand() % 10 == 0)
-            m._Velocity = 1.0f;
-
         m._Pos.x += m._Velocity * std::cos(MathUtil::degtorad(m._Angle));
         m._Pos.y += m._Velocity * std::sin(MathUtil::degtorad(m._Angle));
 
-        // add circular wiggles
         m._Angle += (std::rand() % 3) - 1;
     }
 }

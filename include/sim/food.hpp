@@ -11,7 +11,8 @@ namespace R_01
     class Food : public IObject
     {
     private:
-        struct M {
+        struct M
+        {
             ObjectType _Type;
 
             sf::Vector2f _Size;
@@ -26,7 +27,19 @@ namespace R_01
         explicit Food(M m) : m(std::move(m)) {}
 
     public:
-        static Food create(sf::Vector2f size, sf::Vector2f pos, uint32_t nutrition, uint32_t lifespan);
+        static Food create(sf::Vector2f size, sf::Vector2f pos, uint32_t nutrition, uint32_t lifespan)
+        {
+            return Food(M{
+                ._Type = ObjectType::FOOD,
+
+                ._Size = size,
+                ._Pos = pos,
+                ._Color = sf::Color::Green,
+                ._Hitbox = 0.0f,
+
+                ._Nutrition = nutrition,
+                ._Lifespan = lifespan});
+        }
 
         ObjectType getType() const override { return m._Type; }
         sf::Vector2f getPos() const override { return m._Pos; }
@@ -38,21 +51,4 @@ namespace R_01
 
         void setPos(sf::Vector2f pos) override { m._Pos = pos; }
     };
-}
-
-namespace R_01
-{
-    Food Food::create(sf::Vector2f size, sf::Vector2f pos, uint32_t nutrition, uint32_t lifespan)
-    {
-        return Food(M{
-            ._Type = ObjectType::FOOD,
-
-            ._Size = size,
-            ._Pos = pos,
-            ._Color = sf::Color::Green,
-            ._Hitbox = 0.0f,
-
-            ._Nutrition = nutrition,
-            ._Lifespan = lifespan});
-    }
 }
